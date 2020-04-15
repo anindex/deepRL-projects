@@ -3,6 +3,12 @@ import random
 import copy
 from collections import namedtuple, deque
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 
@@ -46,7 +52,7 @@ class ReplayBuffer:
         e = self.experience(state, action, reward, next_state, done)
         self.memory.append(e)
     
-    def sample(self):
+    def sample(self, discrete_action=True):
         """Randomly sample a batch of experiences from memory."""
         experiences = random.sample(self.memory, k=self.batch_size)
 
@@ -56,6 +62,8 @@ class ReplayBuffer:
         next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
         dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
 
+        if discrete_action:
+            actions = actions.long()
         return (states, actions, rewards, next_states, dones)
 
     def __len__(self):

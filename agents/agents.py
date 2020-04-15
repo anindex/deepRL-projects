@@ -1,5 +1,12 @@
-from models import FCQNetwork, CNNQNetwork, FCPolicy, CNNPolicy
-from utils import OUNoise, ReplayBuffer
+from .models import FCQNetwork, CNNQNetwork, FCPolicy, CNNPolicy
+from .utils import OUNoise, ReplayBuffer
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import numpy as np
+import random
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 64         # minibatch size
