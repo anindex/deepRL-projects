@@ -156,7 +156,7 @@ class DDPGAgent():
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
-        self.noises = [OUNoise(action_size, i) for i in range(num_agents)]
+        self.noises = OUNoise((num_agents, action_size), random_seed)
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
@@ -184,13 +184,11 @@ class DDPGAgent():
             actions = self.actor_local(states).cpu().data.numpy()
         self.actor_local.train()
         if add_noise:
-            for i in range(self.num_agents):
-                actions[i] += self.noises[i].sample()
+            actions += self.noises.sample()
         return np.clip(actions, -1, 1)
 
     def reset(self):
-        for n in self.noises:
-            n.reset()
+        self.noises.reset()
 
     def learn(self, experiences, gamma):
         """Update policy and value parameters using given batch of experience tuples.
