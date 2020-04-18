@@ -31,6 +31,26 @@ class OUNoise:
         self.state = x + dx
         return self.state
 
+class NormalNoise():
+    """A simple normal-noise sampler
+        
+    Args:
+        size (tuple): size of the noise to be generated
+        seed (int): random seed for the rnd-generator
+        sigma (float): standard deviation of the normal distribution
+    """
+    def __init__(self, size, seed, sigma = 0.2):
+        self._size = size
+        self._seed = np.random.seed(seed)
+        self._sigma = sigma
+
+    def reset(self):
+        pass
+
+    def sample(self):
+        _res = self._sigma * np.random.randn(*self._size)
+        return _res
+
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
 
@@ -65,6 +85,53 @@ class ReplayBuffer:
         if discrete_action:
             actions = actions.long()
         return (states, actions, rewards, next_states, dones)
+
+    def __len__(self):
+        """Return the current size of internal memory."""
+        return len(self.memory)
+
+
+class MAReplayBuffer:
+    """Fixed-size buffer to store multi-agents experience tuples."""
+
+    def __init__(self, action_size, buffer_size, batch_size, num_agents, seed):
+        """Initialize a ReplayBuffer object.
+        Params
+        ======
+            buffer_size (int): maximum size of buffer
+            batch_size (int): size of each training batch
+        """
+        self.action_size = action_size
+        self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
+        self.batch_size = batch_size
+        self.experience = namedtuple("MAExperience", field_names=["states", "actions", "rewards", "next_states", "dones"])
+        self.num_agents = num_agents
+        self.seed = random.seed(seed)
+    
+    def add(self, states, actions, rewards, next_states, dones):
+        """Add a new multi-agent experience to memory."""
+        assert len(states)      == self.num_agents, 'ERROR> group states size mismatch'
+        assert len(actions)     == self.num_agents, 'ERROR> group actions size mismatch'
+        assert len(rewards)     == self.num_agents, 'ERROR> group rewards size mismatch'
+        assert len(next_states) == self.num_agents, 'ERROR> group next states size mismatch'
+        assert len(dones)       == self.num_agents, 'ERROR> group dones size mismatch'
+
+        e = self.experience(states, actions, rewards, next_states, dones)
+        self.memory.append(e)
+    
+    def sample(self, discrete_action=True):
+        """Randomly sample a batch of experiences from memory."""
+        experiences = random.sample(self.memory, k=self.batch_size)
+
+        states = torch.from_numpy(np.stack([e.states for e in experiences if e is not None])).float().to(device)
+        actions = torch.from_numpy(np.stack([e.actions for e in experiences if e is not None])).float().to(device)
+        rewards = torch.from_numpy(np.stack([e.rewards for e in experiences if e is not None])).float().to(device)
+        next_states = torch.from_numpy(np.stack([e.next_states for e in experiences if e is not None])).float().to(device)
+        dones = torch.from_numpy(np.stack([e.dones for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+
+        if discrete_action:
+            actions = actions.long()
+        return states, actions, rewards, next_states, dones
 
     def __len__(self):
         """Return the current size of internal memory."""
