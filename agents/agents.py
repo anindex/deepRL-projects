@@ -19,6 +19,17 @@ WEIGHT_DECAY = 0.0      # L2 weight decay
 UPDATE_EVERY = 20       # how often to update the network
 NUM_UPDATES  = 10       # number of updates
 
+MA_BUFFER_SIZE = int(1e6)  # replay buffer size
+MA_BATCH_SIZE = 128        # minibatch size
+MA_GAMMA = 0.98            # discount factor
+MA_TAU = 1e-3              # for soft update of target parameters
+MA_LR = 5e-4               # learning rate 
+MA_LR_ACTOR = 1e-4         # learning rate of the actor 
+MA_LR_CRITIC = 1e-3        # learning rate of the critic
+MA_WEIGHT_DECAY = 0.0      # L2 weight decay
+MA_UPDATE_EVERY = 20       # how often to update the network
+MA_NUM_UPDATES  = 10       # number of updates
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DQNAgent():
