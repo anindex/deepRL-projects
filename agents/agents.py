@@ -17,7 +17,7 @@ LR_ACTOR = 1e-4         # learning rate of the actor
 LR_CRITIC = 1e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.0      # L2 weight decay
 UPDATE_EVERY = 20       # how often to update the network
-NUM_UPDATES  = 10       # number of updates
+NUM_UPDATES  = 7        # number of updates
 
 MA_BUFFER_SIZE = int(1e6)  # replay buffer size
 MA_BATCH_SIZE = 128        # minibatch size
