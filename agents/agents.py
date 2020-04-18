@@ -8,14 +8,16 @@ import torch.optim as optim
 import numpy as np
 import random
 
-BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 64         # minibatch size
-GAMMA = 0.99            # discount factor
+BUFFER_SIZE = int(1e6)  # replay buffer size
+BATCH_SIZE = 128        # minibatch size
+GAMMA = 0.98            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
 LR_ACTOR = 1e-4         # learning rate of the actor 
-LR_CRITIC = 3e-4        # learning rate of the critic
-UPDATE_EVERY = 4        # how often to update the network
+LR_CRITIC = 1e-3        # learning rate of the critic
+WEIGHT_DECAY = 0.0      # L2 weight decay
+UPDATE_EVERY = 20       # how often to update the network
+NUM_UPDATES  = 10       # number of updates
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -154,7 +156,7 @@ class DDPGAgent():
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
-        self.noises = [OUNoise(action_size, random_seed) for _ in range(num_agents)]
+        self.noises = [OUNoise(action_size, i) for i in range(num_agents)]
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
@@ -162,17 +164,17 @@ class DDPGAgent():
         # counting steps
         self.t_step = 0
     
-    def step(self, states, actions, rewards, next_states, dones):
+    def step(self, state, action, reward, next_state, done):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
-        for i in range(self.num_agents):
-            self.memory.add(states[i], actions[i], rewards[i], next_states[i], dones[i])
+        self.memory.add(state, action, reward, next_state, done)
 
         self.t_step = (self.t_step + 1) % UPDATE_EVERY
         # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE and self.t_step == 0:
-            experiences = self.memory.sample()
-            self.learn(experiences, GAMMA)
+            for _  in range(NUM_UPDATES):
+                experiences = self.memory.sample(discrete_action=False)
+                self.learn(experiences, GAMMA)
 
     def act(self, states, add_noise=True):
         """Returns actions for given state as per current policy."""
@@ -187,7 +189,8 @@ class DDPGAgent():
         return np.clip(actions, -1, 1)
 
     def reset(self):
-        self.noise.reset()
+        for n in self.noises:
+            n.reset()
 
     def learn(self, experiences, gamma):
         """Update policy and value parameters using given batch of experience tuples.
@@ -215,7 +218,7 @@ class DDPGAgent():
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm(self.critic_local.parameters(), 1) # clipping gradient to 1 for stable learning
+        #torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1) # clipping gradient to 1 for stable learning
         self.critic_optimizer.step()
 
         # ---------------------------- update actor ---------------------------- #
