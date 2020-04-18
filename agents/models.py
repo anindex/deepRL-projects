@@ -244,3 +244,81 @@ class CNNPolicy(nn.Module):
         x = F.relu(self.fc2(x))
 
         return F.softmax(self.fc3(x), dim=1)
+
+
+
+class MAFCPolicy(nn.Module) :
+    r"""A simple deterministic policy network with batch norms
+    Args:
+        observationShape (tuple): shape of the observations given to the network
+        actionShape (tuple): shape of the actions to be computed by the network
+    """
+    def __init__(self, state_size, action_size, seed, fc1_units=256, fc2_units=128) :
+        super(MAFCPolicy, self).__init__()
+
+        self.seed     = torch.manual_seed(seed)
+
+        self.bn_input = nn.BatchNorm1d(state_size)
+        self.fc1      = nn.Linear(state_size, fc1_units)
+        self.bn_fc1   = nn.BatchNorm1d(fc1_units)
+        self.fc2      = nn.Linear(fc1_units, fc2_units)
+        self.bn_fc2   = nn.BatchNorm1d(fc2_units)
+        self.fc3      = nn.Linear(fc2_units, action_size)
+        self.reset_parameters()
+
+
+    def reset_parameters(self) :
+        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
+        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
+        self.fc3.weight.data.uniform_(-3e-3, 3e-3)
+
+
+    def forward(self, state) :
+        r"""Forward pass for this deterministic policy
+        Args:
+            state (torch.tensor): observation used to decide the action
+        """
+        x = self.bn_input(state)
+
+        x = F.relu(self.bn_fc1(self.fc1(x)))
+        x = F.relu(self.bn_fc2(self.fc2(x)))
+
+        return F.tanh(self.fc3(x))
+
+class MAFCCritic(nn.Module) :
+    r"""A simple critic Q-network with batch norm to be used for the centralized critics
+    Args:
+        joint_state_size (tuple): shape of the augmented state representation [o1,o2,...on]
+        joint_action_size (tuple): shape of the augmented action representation [a1,a2,...,an]
+    """
+    def __init__( self, joint_state_size, joint_action_size, seed, fc1_units=128, fc2_units=128) :
+        super(MAFCCritic, self).__init__()
+
+        self.seed     = torch.manual_seed(seed)
+
+        self.bn_input = nn.BatchNorm1d(joint_state_size)
+        self.fc1      = nn.Linear(joint_state_size, fc1_units)
+        self.fc2      = nn.Linear(fc1_units + joint_action_size, fc2_units)
+        self.fc3      = nn.Linear(fc2_units, 1)
+        self.reset_parameters()
+
+
+    def reset_parameters(self) :
+        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
+        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
+        self.fc3.weight.data.uniform_(-3e-3, 3e-3)
+
+
+    def forward(self, joint_states, joint_actions) :
+        r"""Forward pass for this critic at a given (x=[o1,...,an],a=[a1...an]) pair
+        Args:
+            joint_states (torch.tensor): augmented observation [o1,o2,...,on]
+            joint_actions (torch.tensor): augmented action [a1,a2,...,an]
+        """
+        xs = self.bn_input(joint_states)
+        xs = F.relu(self.fc1(xs))
+
+        x = torch.cat([xs, joint_actions], dim=1)
+        x = F.relu(self.fc2(x))
+
+        return self.fc3(x)
