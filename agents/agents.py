@@ -11,15 +11,19 @@ import numpy as np
 import random
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 128        # minibatch size
-GAMMA = 0.98            # discount factor
+BATCH_SIZE = 256        # minibatch size
+GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
-LR_ACTOR = 1e-4         # learning rate of the actor 
+LR_ACTOR = 1e-3         # learning rate of the actor 
 LR_CRITIC = 1e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.0      # L2 weight decay
+NOISE_OU_MU = 0.0       # param mu for OU noise
+NOISE_OU_THETA = 0.15   # param theta for OU noise
+NOISE_OU_SIGMA = 0.2    # param sigma for OU noise
+EPSILON_DECAY = 1e-5    # decay factor for e-greedy linear schedule
 UPDATE_EVERY = 20       # how often to update the network
-NUM_UPDATES  = 7        # number of updates
+NUM_UPDATES  = 10       # number of updates
 
 MA_BUFFER_SIZE = int(1e6)  # replay buffer size
 MA_BATCH_SIZE = 256        # minibatch size
@@ -160,17 +164,17 @@ class DDPGAgent():
         self.num_agents = num_agents
 
         # Actor Network (w/ Target Network)
-        self.actor_local = FCPolicy(state_size, action_size, random_seed).to(device)
-        self.actor_target = FCPolicy(state_size, action_size, random_seed).to(device)
+        self.actor_local = MAFCPolicy(state_size, action_size, random_seed).to(device)
+        self.actor_target = MAFCPolicy(state_size, action_size, random_seed).to(device)
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
-        self.critic_local = FCCritic(state_size, action_size, random_seed).to(device)
-        self.critic_target = FCCritic(state_size, action_size, random_seed).to(device)
+        self.critic_local = MAFCCritic(state_size, action_size, random_seed).to(device)
+        self.critic_target = MAFCCritic(state_size, action_size, random_seed).to(device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
-        self.noises = OUNoise((num_agents, action_size), random_seed)
+        self.noises = OUNoise((num_agents, action_size), random_seed, NOISE_OU_MU, NOISE_OU_THETA, NOISE_OU_SIGMA)
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
@@ -190,7 +194,7 @@ class DDPGAgent():
                 experiences = self.memory.sample(discrete_action=False)
                 self.learn(experiences, GAMMA)
 
-    def act(self, states, add_noise=True):
+    def act(self, states, eps=0., add_noise=True):
         """Returns actions for given state as per current policy."""
         states = torch.from_numpy(states).float().to(device)
         self.actor_local.eval()
@@ -198,7 +202,7 @@ class DDPGAgent():
             actions = self.actor_local(states).cpu().data.numpy()
         self.actor_local.train()
         if add_noise:
-            actions += self.noises.sample()
+            actions += eps * self.noises.sample()
         return np.clip(actions, -1, 1)
 
     def reset(self):
@@ -230,7 +234,7 @@ class DDPGAgent():
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        #torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1) # clipping gradient to 1 for stable learning
+        torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1) # clipping gradient to 1 for stable learning
         self.critic_optimizer.step()
 
         # ---------------------------- update actor ---------------------------- #
@@ -367,7 +371,7 @@ class MADDPGAgent():
             # ---------------------------- update critic ---------------------------- #
             # Get predicted joint next-state actions and Q values from target models
             with torch.no_grad():
-                joint_next_actions = torch.stack([self.actor_targets[i_actor](local_next_states) for i_actor in range(self.num_agents), dim=1)
+                joint_next_actions = torch.stack([self.actor_targets[i_actor](local_next_states) for i_actor in range(self.num_agents)], dim=1)
                 joint_next_actions = joint_next_actions.reshape(joint_next_actions.shape[0], -1)
 
                 # Compute Q targets for current states (y_i)
