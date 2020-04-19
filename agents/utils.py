@@ -39,17 +39,17 @@ class NormalNoise():
         seed (int): random seed for the rnd-generator
         sigma (float): standard deviation of the normal distribution
     """
-    def __init__(self, size, seed, sigma = 0.2):
-        self._size = size
-        self._seed = np.random.seed(seed)
-        self._sigma = sigma
+    def __init__(self, shape, seed, sigma = 0.2):
+        self.shape = shape
+        self.seed  = np.random.seed(seed)
+        self.sigma = sigma
 
     def reset(self):
         pass
 
     def sample(self):
-        _res = self._sigma * np.random.randn(*self._size)
-        return _res
+        res = self.sigma * np.random.randn(*self.shape)
+        return res
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
@@ -94,17 +94,15 @@ class ReplayBuffer:
 class MAReplayBuffer:
     """Fixed-size buffer to store multi-agents experience tuples."""
 
-    def __init__(self, action_size, buffer_size, batch_size, num_agents, seed):
+    def __init__(self, buffer_size, batch_size, num_agents, seed):
         """Initialize a ReplayBuffer object.
         Params
         ======
             buffer_size (int): maximum size of buffer
             batch_size (int): size of each training batch
         """
-        self.action_size = action_size
         self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
         self.batch_size = batch_size
-        self.experience = namedtuple("MAExperience", field_names=["states", "actions", "rewards", "next_states", "dones"])
         self.num_agents = num_agents
         self.seed = random.seed(seed)
     
@@ -116,18 +114,18 @@ class MAReplayBuffer:
         assert len(next_states) == self.num_agents, 'ERROR> group next states size mismatch'
         assert len(dones)       == self.num_agents, 'ERROR> group dones size mismatch'
 
-        e = self.experience(states, actions, rewards, next_states, dones)
-        self.memory.append(e)
+        experience = (states, actions, rewards, next_states, dones)
+        self.memory.append(experience)
     
     def sample(self, discrete_action=True):
         """Randomly sample a batch of experiences from memory."""
         experiences = random.sample(self.memory, k=self.batch_size)
 
-        states = torch.from_numpy(np.stack([e.states for e in experiences if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.stack([e.actions for e in experiences if e is not None])).float().to(device)
-        rewards = torch.from_numpy(np.stack([e.rewards for e in experiences if e is not None])).float().to(device)
-        next_states = torch.from_numpy(np.stack([e.next_states for e in experiences if e is not None])).float().to(device)
-        dones = torch.from_numpy(np.stack([e.dones for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+        states = torch.tensor([e[0] for e in experiences], dtype=torch.float).to(device)
+        actions = torch.tensor([e[1] for e in experiences], dtype=torch.float).to(device)
+        rewards = torch.tensor([e[2] for e in experiences], dtype=torch.float).unsqueeze(2).to(device)
+        next_states = torch.tensor([e[3] for e in experiences], dtype=torch.float).to(device)
+        dones = torch.tensor([e[4] for e in experiences], dtype=torch.float).unsqueeze(2).to(device)
 
         if discrete_action:
             actions = actions.long()

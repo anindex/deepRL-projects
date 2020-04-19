@@ -285,22 +285,22 @@ class MADDPGAgent():
         self.actor_targets = [MAFCPolicy(state_size, action_size, random_seed).to(device) for _ in range(num_agents)]
         self.actor_optimizers = [optim.Adam(actor_local.parameters(), lr=MA_LR_ACTOR) for actor_local in self.actor_locals]
 
-        summary(self.actor_locals[0], (num_agents, state_size))
+        summary(self.actor_locals[0], (state_size, ))
         print(self.actor_locals[0])
 
         # Critic Network (w/ Target Network)
-        self.critic_locals = [MAFCCritic(state_size, action_size, random_seed).to(device) for _ in range(num_agents)]
-        self.critic_targets = [MAFCCritic(state_size, action_size, random_seed).to(device) for _ in range(num_agents)]
+        self.critic_locals = [MAFCCritic(num_agents * state_size, num_agents * action_size, random_seed).to(device) for _ in range(num_agents)]
+        self.critic_targets = [MAFCCritic(num_agents * state_size, num_agents * action_size, random_seed).to(device) for _ in range(num_agents)]
         self.critic_optimizers = [optim.Adam(critic_local.parameters(), lr=MA_LR_CRITIC) for critic_local in self.critic_locals]
 
         summary(self.critic_locals[0], [(num_agents * state_size, ), (num_agents * action_size, )])
         print(self.critic_locals[0])
 
         # Noise process
-        self.noises = NormalNoise(action_size, random_seed)
+        self.noises = NormalNoise((num_agents, action_size), random_seed)
 
         # Replay memory
-        self.memory = MAReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, num_agents, random_seed)
+        self.memory = MAReplayBuffer(MA_BUFFER_SIZE, MA_BATCH_SIZE, num_agents, random_seed)
 
         # counting steps
         self.t_step = 0
@@ -318,7 +318,6 @@ class MADDPGAgent():
 
     def act(self, states, eps=0., add_noise=True):
         """Returns actions for given state as per current policy."""
-        states = torch.from_numpy(states).float().to(device)
 
         for actor_local in self.actor_locals:
             actor_local.eval()
@@ -326,13 +325,13 @@ class MADDPGAgent():
         with torch.no_grad():
             actions = []
             for i, actor_local in enumerate(self.actor_locals):
-                i_state = torch.from_numpy(states[i]).float().to(device)
+                i_state = torch.from_numpy(states[i]).unsqueeze(0).float().to(device)
                 i_action = actor_local(i_state).cpu().data.numpy().squeeze()
                 actions.append(i_action)
             actions = np.array(actions)
 
             if add_noise:
-                actions += np.array([eps * self.noises.sample() for _ in range(self.num_agents)]).reshape(actions.shape)
+                actions += eps * self.noises.sample()
 
         for actor_local in self.actor_locals:
             actor_local.train()
@@ -359,26 +358,24 @@ class MADDPGAgent():
 
             # preprocess dimension for joint states and joint actions for computing Q Critic
             joint_states      = states.reshape(states.shape[0], -1)
-            joint_next_states = states.reshape(next_states.shape[0], -1)
+            joint_next_states = next_states.reshape(next_states.shape[0], -1)
             joint_actions     = actions.reshape(actions.shape[0], -1)
 
-            # preprocess dimension for local states, rewards and dones
-            local_states      = states[:, i, :]
-            local_next_states = next_states[:, i, :]
+            # preprocess dimension for local rewards and dones
             local_rewards     = rewards[:, i, :]
             local_dones       = dones[:, i, :]
 
             # ---------------------------- update critic ---------------------------- #
             # Get predicted joint next-state actions and Q values from target models
             with torch.no_grad():
-                joint_next_actions = torch.stack([self.actor_targets[i_actor](local_next_states) for i_actor in range(self.num_agents)], dim=1)
+                joint_next_actions = torch.stack([self.actor_targets[i_actor](next_states[:, i_actor, :].contiguous()) for i_actor in range(self.num_agents)], dim=1)
                 joint_next_actions = joint_next_actions.reshape(joint_next_actions.shape[0], -1)
 
                 # Compute Q targets for current states (y_i)
                 Q_targets = local_rewards + gamma * (1 - local_dones) * self.critic_targets[i](joint_next_states, joint_next_actions)
         
             # Compute critic loss
-            Q_expected = self.critic_locals[i](states, actions)
+            Q_expected = self.critic_locals[i](joint_states, joint_actions)
             critic_loss = F.mse_loss(Q_expected, Q_targets)
 
             # Minimize the loss
@@ -389,7 +386,7 @@ class MADDPGAgent():
 
             # ---------------------------- update actor ---------------------------- #
             # Compute actor loss
-            actions_pred = torch.stack([self.actor_locals[i](local_states) if i == i_actor else actions[:, i_actor, :] for i_actor in range(self.num_agents)], dim=1)
+            actions_pred = torch.stack([self.actor_locals[i_actor](states[:, i_actor, :].contiguous()) if i_actor == i else actions[:, i_actor, :] for i_actor in range(self.num_agents)], dim=1)
             actions_pred = actions_pred.reshape(actions_pred.shape[0], -1)
             actor_loss = -self.critic_locals[i](joint_states, actions_pred).mean()
 
