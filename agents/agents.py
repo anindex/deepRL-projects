@@ -158,7 +158,7 @@ class DQNAgent():
 class DDPGAgent():
     """Interacts with and learns from the environment."""
     
-    def __init__(self, state_size, action_size, random_seed, num_agents=1):
+    def __init__(self, state_size, action_size, random_seed, num_agents=1, batch_norm=True):
         """Initialize an Agent object.
         
         Params
@@ -173,16 +173,24 @@ class DDPGAgent():
         self.num_agents = num_agents
 
         # Actor Network (w/ Target Network)
-        self.actor_local = MAFCPolicy(state_size, action_size, random_seed).to(device)
-        self.actor_target = MAFCPolicy(state_size, action_size, random_seed).to(device)
+        if batch_norm:
+            self.actor_local = MAFCPolicy(state_size, action_size, random_seed).to(device)
+            self.actor_target = MAFCPolicy(state_size, action_size, random_seed).to(device)
+        else:
+            self.actor_local = FCPolicy(state_size, action_size, random_seed).to(device)
+            self.actor_target = FCPolicy(state_size, action_size, random_seed).to(device)
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=LR_ACTOR)
 
         summary(self.actor_local, (state_size, ))
         print(self.actor_local)
 
         # Critic Network (w/ Target Network)
-        self.critic_local = MAFCCritic(state_size, action_size, random_seed).to(device)
-        self.critic_target = MAFCCritic(state_size, action_size, random_seed).to(device)
+        if batch_norm:
+            self.critic_local = MAFCCritic(state_size, action_size, random_seed).to(device)
+            self.critic_target = MAFCCritic(state_size, action_size, random_seed).to(device)
+        else:
+            self.critic_local = FCCritic(state_size, action_size, random_seed).to(device)
+            self.critic_target = FCCritic(state_size, action_size, random_seed).to(device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         summary(self.critic_local, [(state_size, ), (action_size, )])

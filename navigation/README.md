@@ -17,7 +17,7 @@ The environment chosen for the project was a **modified version of the Banana
 Collector Environment** from the Unity ML-Agents toolkit. The original version
 can be found [here](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#banana-collector),
 and this version consists of a custom build provided by Udacity with the following
-description:
+descriptions:
 
 * A reward of +1 is provided for collecting a yellow banana and a reward of -1 is provided for collecting a blue banana. Thus, the goal of your agent is to collect as many yellow bananas as possible while avoiding blue bananas. Note that whenever the agent collects a banana, a new banana is spawn at a random place in the planar environment.
 
@@ -48,7 +48,7 @@ Windows (64-bit)  | [Link](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P1/B
 
 Unzip (or decompress) the downloaded file and store the path of the executable as we will need the path to input on `Navigation.ipynb`. 
 
-Note that this environment is compatible only with an older version of the ML-Agents toolkit (version 0.4.0), the setup section above has already taken care of this.
+Note that this environment is compatible only with an older version of the ML-Agents toolkit (version 0.4.0), the next setup section will take care of this.
 
 ### Resolving dependencies
 

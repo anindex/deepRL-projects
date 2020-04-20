@@ -98,9 +98,6 @@ class FCCritic(nn.Module):
         self.fc2  = nn.Linear(fc1_units + action_size, fc2_units) # action input from second fc layer
         self.fc3  = nn.Linear(fc2_units, fc3_units)
         self.fc4  = nn.Linear(fc3_units, 1)
-
-        self.bn_fc1 = nn.BatchNorm1d(fc1_units)
-        
         self.reset_parameters()
     
     def reset_parameters(self):
@@ -111,13 +108,11 @@ class FCCritic(nn.Module):
 
     def forward(self, state, action):
         """Build a network that maps state -> action values."""
-        xs = self.fc1(state)
-        xs = self.bn_fc1(xs)
-        xs = F.relu(xs)
+        xs = F.leaky_relu(self.fc1(state))
         x = torch.cat((xs, action), dim=1)
 
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = F.leaky_relu(self.fc2(x))
+        x = F.leaky_relu(self.fc3(x))
         return self.fc4(x)
 
 class CNNCritic(nn.Module):
@@ -168,7 +163,7 @@ class CNNCritic(nn.Module):
 class FCPolicy(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=256, fc2_units=128):
+    def __init__(self, state_size, action_size, seed, fc_units=256):
         """Initialize parameters and build model.
         Params
         ======
@@ -181,27 +176,18 @@ class FCPolicy(nn.Module):
         super(FCPolicy, self).__init__()
         self.seed = torch.manual_seed(seed)
 
-        self.fc1 = nn.Linear(state_size, fc1_units)
-        self.fc2 = nn.Linear(fc1_units, fc2_units)
-        self.fc3 = nn.Linear(fc2_units, action_size)
-
-        self.bn_fc1 = nn.BatchNorm1d(fc1_units)
-
+        self.fc1 = nn.Linear(state_size, fc_units)
+        self.fc2 = nn.Linear(fc_units, action_size)
         self.reset_parameters()
 
     def reset_parameters(self):
         self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
-        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc3.weight.data.uniform_(-3e-3, 3e-3)
+        self.fc2.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
-        x = self.fc1(state)
-        x = self.bn_fc1(x)
-        x = F.relu(x)
-
-        x = F.relu(self.fc2(x))
-        return F.tanh(self.fc3(x))
+        x = F.relu(self.fc1(state))
+        return F.tanh(self.fc2(x))
 
 class CNNPolicy(nn.Module):
     """Actor (Policy) Model."""
