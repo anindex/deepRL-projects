@@ -63,6 +63,9 @@ class DQNAgent():
         else:
             self.qnetwork_local = FCQNetwork(state_size, action_size, seed).to(device)
             self.qnetwork_target = FCQNetwork(state_size, action_size, seed).to(device)
+        
+        summary(self.qnetwork_local, (state_size, ))
+        print(self.qnetwork_local)
 
         # Optimizer
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
@@ -168,10 +171,16 @@ class DDPGAgent():
         self.actor_target = MAFCPolicy(state_size, action_size, random_seed).to(device)
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=LR_ACTOR)
 
+        summary(self.actor_local, (state_size, ))
+        print(self.actor_local)
+
         # Critic Network (w/ Target Network)
         self.critic_local = MAFCCritic(state_size, action_size, random_seed).to(device)
         self.critic_target = MAFCCritic(state_size, action_size, random_seed).to(device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
+
+        summary(self.critic_local, [(state_size, ), (action_size, )])
+        print(self.critic_local)
 
         # Noise process
         self.noises = OUNoise((num_agents, action_size), random_seed, NOISE_OU_MU, NOISE_OU_THETA, NOISE_OU_SIGMA)
