@@ -10,11 +10,17 @@ from torchsummary import summary
 import numpy as np
 import random
 
+DQN_BUFFER_SIZE = int(1e5)  # replay buffer size
+DQN_BATCH_SIZE = 64         # minibatch size
+DQN_GAMMA = 0.99            # discount factor
+DQN_TAU = 1e-3              # for soft update of target parameters
+DQN_LR = 5e-4               # learning rate 
+DQN_UPDATE_EVERY = 4        # how often to update the network
+
 BUFFER_SIZE = int(1e6)  # replay buffer size
 BATCH_SIZE = 256        # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
-LR = 5e-4               # learning rate 
 LR_ACTOR = 1e-3         # learning rate of the actor 
 LR_CRITIC = 1e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.0      # L2 weight decay
@@ -68,10 +74,10 @@ class DQNAgent():
         print(self.qnetwork_local)
 
         # Optimizer
-        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=DQN_LR)
 
         # Replay memory
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, seed)
+        self.memory = ReplayBuffer(action_size, DQN_BUFFER_SIZE, DQN_BATCH_SIZE, seed)
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
     
@@ -80,12 +86,12 @@ class DQNAgent():
         self.memory.add(state, action, reward, next_state, done)
         
         # Learn every UPDATE_EVERY time steps.
-        self.t_step = (self.t_step + 1) % UPDATE_EVERY
+        self.t_step = (self.t_step + 1) % DQN_UPDATE_EVERY
         if self.t_step == 0:
             # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > BATCH_SIZE:
+            if len(self.memory) > DQN_BATCH_SIZE:
                 experiences = self.memory.sample()
-                self.learn(experiences, GAMMA)
+                self.learn(experiences, DQN_GAMMA)
 
     def act(self, state, eps=0.):
         """Returns actions for given state as per current policy.
@@ -133,7 +139,7 @@ class DQNAgent():
         self.optimizer.step()
 
         # ------------------- update target network ------------------- #
-        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)                     
+        self.soft_update(self.qnetwork_local, self.qnetwork_target, DQN_TAU)                     
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.
