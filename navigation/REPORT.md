@@ -106,8 +106,10 @@ With the above implementations, the DQN agent is described in `agents.py` as `DQ
 
 - Experience replay: the `ReplayBuffer` class is initialized in `DQNAgent.memory` to store collected transitions and uniformly sample a batch for learning. 
 - Local and Target network: the class consists of `DQNAgent.qnetwork_local` network for training and `DQNAgent.qnetwork_target` network for storing delayed weights of the local network, target network effectively makes the TD updates stable. 
-- Soft updates: instead of abrupt weight update for target network every certain training step, we do a soft update implemented in `DQNAgent.soft_update()` function. The rule is described below:
+- Soft updates: instead of abrupt weight updates for target network every certain training step, we do a soft update mechanism implemented in `DQNAgent.soft_update()` function. This can stabilize training process further. The rule is described below:
+
 ![image](https://user-images.githubusercontent.com/18066876/79749721-fcf6c400-830f-11ea-9bb1-5295231b73c5.png)
+
 
 #### Training routine
 
@@ -199,11 +201,11 @@ As we can see, the environment is solved in 700 episodes with average score of 1
 
 Due to stochasticity of the environment, sometime we can see many blue bananas surrounding the agent, it then oscillates in these situations. Overall, the mean testing score reaches the target of nearly 13 (12.51) over 100 episodes to solve this environment.
 
-![Testing score][img_training_result]
+![Testing score][img_testing_result]
 
 ## 4. Future works
 
-Finally, some of the improvements we can consider making in following updates to this post:
+Finally, some of the improvements we can consider making in following updates to this project:
 
 - Test DDPG agent in this environment to see the learning performance according to total episodes to solve the environment and maximum training score reached.
 
