@@ -48,7 +48,7 @@ FCQNetwork(
 )
 ```
 
-As the observation shape of `Banana` environment has only 37 variables compared to visual 3x28x28 image observation of `VisualBanana` environment, a fully connected deep model is chosen, which has enough capacity to capture the complexity of Q-function. In this project, the same parameters are set according to Udacity Q-network implementation [2], which consists of 64 units for both hidden layers and no batch normalization method is used. 
+As the observation shape of `Banana` environment has only 37 variables compared to visual 3x84x84 image observation of `VisualBanana` environment, a fully connected deep model is chosen, which has enough capacity to capture the complexity of Q-function. In this project, the same parameters are set according to Udacity Q-network implementation [2], which consists of 64 units for both hidden layers, no batch normalization method is used and each hidden layer is activated by ReLU.
 
 ## 2. Implementation
 
@@ -60,7 +60,7 @@ The whole implementation of the agent solver is packed into `DQNAgent` class in 
 
 #### Experience replay
 
-This mechanism consists of **learning from past stored experiences during replay sessions**[1]. Basically, the agent experiences are stored in memory (called a replay buffer) and learn from them later. This allows more efficient use of past experiences by not throwing away samples right away, and it also helps to break one type of correlations: sequential correlations between experiences tuples. 
+This mechanism can be described as **learning from past stored experiences during replay sessions**[1]. Basically, the agent experiences are stored in memory (called a replay buffer) and learn from them later. This allows more efficient use of past experiences by not throwing away samples right away, and it also helps to break one type of correlations: sequential correlations between experiences tuples. 
 
 Intuitionly, sequentially updating experiences introduces more bias as all real-time processes consist of sequential causal time step, we therfore effectively make the model focusing learning on current time period data and hence the bias. 
 
@@ -106,6 +106,7 @@ With the above implementations, the DQN agent is described in `agents.py` as `DQ
 
 - Experience replay: the `ReplayBuffer` class is initialized in `DQNAgent.memory` to store collected transitions and uniformly sample a batch for learning. 
 - Local and Target network: the class consists of `DQNAgent.qnetwork_local` network for training and `DQNAgent.qnetwork_target` network for storing delayed weights of the local network, target network effectively makes the TD updates stable. 
+- Learning routine: is implemented in `DQNAgent.learn()`, which strictly follows the DDPG pseudo-algorithm described in [1].
 - Soft updates: instead of abrupt weight updates for target network every certain training step, we do a soft update mechanism implemented in `DQNAgent.soft_update()` function. This can stabilize training process further. The rule is described below:
 
 ![image](https://user-images.githubusercontent.com/18066876/79749721-fcf6c400-830f-11ea-9bb1-5295231b73c5.png)
@@ -193,19 +194,19 @@ To start evaluating the agent performance, please follow the instruction on `Nav
 
 #### Training scores
 
-As we can see, the environment is solved in 700 episodes with average score of 13, but the agent is trained longer upto 2000 episodes to see the saturated maximum training score. The result is shown as follow:
+As we can see, the environment is solved in 700 episodes with average score of 13, but the agent is trained longer upto 2000 episodes to see the saturated maximum training score. The training scores seems noise in this environment, I think adding gradient clipping and some bacth normalization layer to make training gradient more conservaive can stabilize the training curve. The result is shown as follow:
 
 ![Training score][img_training_result]
 
 #### Testing scores
 
-Due to stochasticity of the environment, sometime we can see many blue bananas surrounding the agent, it then oscillates in these situations. Overall, the mean testing score reaches the target of nearly 13 (12.51) over 100 episodes to solve this environment.
+To evaluate if my agent is succesfully trained, this section provides testing score averaged over 100 episodes, of which no learning process happens. Due to stochasticity of the environment, sometime we can see many blue bananas surrounding the agent, it then oscillates in these situations. Overall, the mean testing score reaches the target of nearly 13 (12.51) over 100 episodes to solve this environment.
 
 ![Testing score][img_testing_result]
 
 ## 4. Future works
 
-Finally, some of the improvements we can consider making in following updates to this project:
+Finally, some of the improvements we can consider making in the following updates to this project:
 
 - Test DDPG agent in this environment to see the learning performance according to total episodes to solve the environment and maximum training score reached.
 
