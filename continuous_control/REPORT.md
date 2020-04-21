@@ -204,14 +204,15 @@ Except for the output layers of each network are uniformly initialized in the ra
 
 #### DDPG agent
 
-With the above considerations, the () DDPG agent is implemented in `agents.py` as `DDPGAgent` class. Some considerations are made:
+With the above considerations, the DDPG agent is implemented in `agents.py` as `DDPGAgent` class. Some considerations are made:
 
 - The init parameter `batch_norm=True|False`: to choose model with batch normalization and higher capacity or not. 
-- The init parameter `num_agents`: to sepcify the number of parallel agents to collect transitions.
+- The init parameter `num_agents`: to specify the number of parallel agents to collect transitions.
 - OU noise: the `OUNoise` class is initialized in `DDPGAgent.noises` to sample noise adding to agent action for exploration behavior.
 - Experience replay: the `ReplayBuffer` class is initialized in `DDPGAgent.memory` to store collected transitions and uniformly sample a batch for learning. 
 - Local and Target network: the class consists of `DDPGAgent.{actor|critic}_local` network for training and `DDPGAgent.{actor|critic}_target` network for storing delayed weights of the local network, target network effectively makes the TD updates stable. 
 - Learning routine: is implemented in `DDPGAgent.learn()`, which strictly follows the DDPG pseudo-algorithm described in [1].
+- Gradient clipping: is used in critic model training for stability. As an example: `torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1)`
 - Soft updates: instead of abrupt weight updates for target network every certain training step, we do a soft update mechanism implemented in `DDPGAgent.soft_update()` function. This can stabilize training process further. The rule is described below:
 
 ![image](https://user-images.githubusercontent.com/18066876/79749721-fcf6c400-830f-11ea-9bb1-5295231b73c5.png)

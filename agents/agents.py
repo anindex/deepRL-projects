@@ -35,7 +35,6 @@ MA_BUFFER_SIZE = int(1e6)  # replay buffer size
 MA_BATCH_SIZE = 256        # minibatch size
 MA_GAMMA = 0.999           # discount factor
 MA_TAU = 1e-3              # for soft update of target parameters
-MA_LR = 5e-4               # learning rate 
 MA_LR_ACTOR = 4e-4         # learning rate of the actor 
 MA_LR_CRITIC = 8e-4        # learning rate of the critic
 MA_EPSILON_DECAY = 5e-6    # decay factor for e-greedy linear schedule
